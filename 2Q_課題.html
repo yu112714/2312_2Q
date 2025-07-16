@@ -1,0 +1,1144 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <script>
+        const savedTheme = localStorage.getItem("theme");
+        if (savedTheme === "dark") {
+          document.documentElement.classList.add("dark-mode");
+        }
+    </script> 
+
+  <meta charset="UTF-8" >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" >
+  <title>Reading ToDo</title> 
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: "Inter", sans-serif;
+        background-color: #fff;
+        color: #434343;
+    }
+
+    .container { 
+        max-width: 100%; 
+        margin: 0 auto; 
+        padding: 20px; 
+    }
+
+    header {
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+    .top-banner {
+        display: none;
+        width: 100vw;
+        padding: 10px 0;
+        text-align: center;
+        background-color: #f5f3ee;
+        color: #b5a37a;
+        font-weight: bold;
+        margin-bottom: 20px;
+        font-size: 16px;
+        margin-bottom: 0;
+    }
+
+    .below-banner-date {
+        text-align: right;
+        font-size: 14px;
+        color: #b5a37a;
+        padding-right: 20px;
+        margin-top: 10px;
+    }
+
+    /*.toggle-theme-button {
+        margin-top: 20px; /* ← 新しく追加！ 
+    }*/
+
+    .reading-progress {
+        background-color: #f8f6f1;
+        border: 2px solid #b5a37a;
+        padding: 1.5rem;
+        margin: 0 auto;
+        max-width: 100%;
+    }
+
+    .reading-progress__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .reading-progress__label {
+        font-size: 16px;
+        color: #656060;
+        margin: 0;
+    }
+
+    .reading-progress__button {
+        background-color: #b5a37a;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        border: none;
+        font-size: 0.9rem;
+    }
+
+    .reading-progress__percentage {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #444;
+        margin-bottom: 0.5rem;
+    }
+
+    /* トップの進捗情報をふわっと表示するアニメーション */
+    .fade-transition {
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
+    .fade-transition.show {
+        opacity: 1;
+    }
+
+    .progress-bar {
+        background-color: #fff;
+        height: 20px;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-bottom: 0.8rem;
+    }
+
+    .progress-bar__fill {
+        background-color: #b5a37a;
+        height: 100%;
+        width: 0%;
+    }
+
+    .reading-progress__book-info {
+        font-size: 0.9rem;
+        color: #a18d65;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .book-title {
+        display: block;
+        text-align: center;
+        font-weight: bold;
+        font-size: 15px;
+        color: #656060;
+    }
+
+    .book-list {
+        border: 2px solid #b5a37a;
+        background-color: #f5f3ee;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .book-item {
+        display: grid;
+        grid-template-columns: 1fr 80px 140px 80px; /* タイトル/日付, 未読, 読むボタン, 削除ボタン */
+        align-items: center;
+        background-color: #e5e0d5;
+        /* border: 2px solid #b5a37a; */
+        border-radius: 10px;
+        padding: 20px 20px;
+        margin-bottom: 10px;
+        gap: 10px;
+    }
+    .book-meta, .book-status {
+        font-size: 16px;
+        color: #b5a37a;
+    }
+
+    .book-status {
+        text-align: center;
+        font-size: 16px;
+        color: #b5a37a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .book-summary {
+        margin-top: 2rem;
+    }
+
+    .book-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .book-header-buttons {
+        display: flex;
+        gap: 3px; /* ← ボタンの間隔。狭めたいので小さめに調整 */
+    }
+
+    .add-book-button {
+        background-color: #bfa46f;
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+    .add-book-button:hover {
+        opacity: 0.85;
+    }
+
+    .summary-columns {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .left-column, .right-column {
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .record-box {
+        background-color: #f5f3ee;
+        border: 2px solid #b5a37a;
+        border-radius: 10px;
+        padding: 20px;
+        min-height: 100px;
+        height: 300px;
+        overflow-y: auto;
+    }
+
+    .book-list-box {
+        background-color: #f5f3ee;
+        border: 2px solid #b5a37a;
+        border-radius: 10px;
+        padding: 20px;
+        height: 300px;              /* あなたの記録と同じ高さ */
+        overflow-y: auto;
+    }
+
+    .book-list-box,
+    .record-box {
+        min-height: 280px;  /* ←お好みで調整 */
+    }
+
+    #completedBooksCount,
+        #totalPagesRead {
+        color: #b5a37a;  /* あなたのデザインで使われているアクセントカラー */
+        font-weight: bold;
+    }
+
+    .delete-button {
+        background-color: #e57474;
+        color: #fff;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;  /* 横中央寄せ */
+        align-items: center;      /* 縦中央寄せ */
+        height: 30px;
+    }
+
+    .main-content {
+        padding: 10px 20px; /* 元が 40px 以上なら圧縮！ */
+    }
+
+    .read-button {
+        background-color: #b5a37a;
+        color: #fff;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;  /* 横中央 */
+        align-items: center;      /* 縦中央 */
+        height: 30px;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        min-height: 40px;
+    }
+
+    .section-title > span, .section-title > h2 {
+        flex-shrink: 1;  /* ← タイトルが潰れすぎないように調整 */
+    }
+
+    .section-buttons button {
+        padding: 6px 12px;
+        font-size: 0.9em;
+    }
+
+    .progress-modal {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(67, 67, 67, 0.5);
+        display: flex; justify-content: center; align-items: center;
+        z-index: 999;
+    }
+
+    .progress-modal__content {
+        background-color: #f5f3ee;
+        border: 2px solid #b5a37a;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        width: 90%;
+        max-width: 350px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .progress-modal__content h2 {
+        font-size: 20px;
+        margin-bottom: 1rem;
+    }
+
+    #bookDueDateInput::-webkit-datetime-edit {
+        font-weight: normal;
+    }
+
+    #pagesReadInput, #bookTitleInput, #bookDateInput, #bookPagesInput, #bookDueDateInput {
+        padding: 10px;
+        font-size: 16px;
+        width: 80%;
+        border: 1px solid #656060;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .modal-buttons {
+        display: flex;
+        justify-content: space-around;
+    }
+
+    .modal-button {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    .modal-button.submit { 
+        background-color: 
+        #b5a37a; color: 
+        white; 
+    }
+
+    .modal-button.cancel { 
+        background-color: #ccc; 
+        color: #656060; 
+    }
+
+    .hidden { display: none; }
+
+    .empty-message {
+        font-size: 16px;
+        font-weight: 500;
+        color: #B5A37A;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .actions-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 12px;
+    }
+
+    .book-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+
+    .book-actions button {
+        white-space: nowrap;
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+
+    #addBookBtn {
+        background-color: #b5a37a;
+        color: white;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    #weeklyBooksChart, #weeklyPagesChart {
+        width: 100% !important;
+        height: 200px !important;
+    }
+
+    #recordChart {
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    #allBooksList {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    /* ダークモードのスタイル追加 */
+    /* ダークモードのスタイル追加 */
+    html.dark-mode body {
+        background-color: #2b2b2b;
+        color: #eee;
+    }
+
+    html.dark-mode .top-banner, 
+    html.dark-mode .record-box, 
+    html.dark-mode .book-list-box, 
+    html.dark-mode .reading-progress, 
+    html.dark-mode .progress-modal__content {
+        background-color: #3a3a3a;
+        color: #eee;
+    }
+
+    html.dark-mode .reading-progress__label, 
+    html.dark-mode .book-title, 
+    html.dark-mode .book-meta, 
+    html.dark-mode .book-status, 
+    html.dark-mode .section-title, 
+    html.dark-mode .empty-message {
+        color: #e0e0e0;
+    }
+
+    html.dark-mode .reading-progress__button, 
+    html.dark-mode .read-button, 
+    html.dark-mode #addBookBtn {
+        background-color: #a38d5e;
+        color: #fff;
+    }
+
+    html.dark-mode .delete-button {
+        background-color: #bd6868;
+        color: #fff;
+    }
+
+    html.dark-mode .progress-bar {
+        background-color: #7d7d7d; /* バーの背景 */
+    }
+
+    html.dark-mode .progress-bar__fill {
+        background-color: #c1ab7c; /* 進捗部分（塗り） */
+    }
+
+    html.dark-mode .book-item {
+        background-color: #757575;     /* やや明るいグレーに */
+        color: #fff;                /* 文字色を白に */
+    }
+
+    html.dark-mode .book-title, 
+    html.dark-mode .book-status {
+        color: #fff !important;     /* 特にここを明示的に白にしておくと確実 */
+    }
+
+    html.dark-mode .reading-progress__percentage {
+        color: #d9d9d9;
+    }
+
+    @media (max-width: 500px) {
+        .section-title > div {
+            flex-wrap: wrap;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .container {
+            padding: 10px;
+        }
+        
+        .book-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .book-item > div {
+            width: 100%;
+        }
+
+        .read-button,
+        .delete-button {
+            width: 100%;
+        }
+
+        .book-status {
+            text-align: left;
+        }
+
+        #recordChart {
+            height: 300px !important;
+        }
+
+        .record-box {
+            max-height: 420px;
+            overflow-y: auto;
+        }
+    }
+
+    @media (max-width: 768px) {
+        #addBookBtn {
+            padding: 8px 12px;
+            font-size: 16px;
+            height: auto;
+            white-space: nowrap; /* ← 折り返し防止で追加 */
+        }
+    }
+
+    @media (min-width: 768px) {
+        .reading-progress__header {
+            justify-content: flex-end;
+        }
+
+        .reading-progress__label {
+            flex: 1;
+            font-size: 1.4rem;
+        }
+
+        .reading-progress__percentage {
+            font-size: 3rem;
+        }
+
+        .reading-progress__book-info {
+            flex-direction: row;
+            justify-content: space-between;
+        }
+
+        .main-content {
+            flex-direction: row;
+            gap: 20px;
+        }
+
+        .left-column, .right-column {
+            flex: 1;
+        }
+
+        .reading-progress, .book-list {
+            width: 100%;
+        }
+    }
+
+    @media screen and (max-width: 600px) {
+        .reading-progress__header {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .reading-progress__button {
+            width: 100%;
+            font-size: 0.9em;
+            padding: 8px 0;
+            box-sizing: border-box;
+        }
+
+        .reading-progress__label {
+            font-size: 1.1em;
+        }
+
+        .below-banner-date {
+            text-align: center;
+            padding-top: 10px;
+        }
+    }
+
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+  <div class="top-banner">📚 今日も読書、楽しもう！</div>
+  <div class="below-banner-date" id="current-date-container">
+    <span id="current-date"></span>
+    <button onclick="toggleDarkMode()" class="toggle-theme-button" style="margin-left: 12px; padding: 4px 12px; border-radius: 6px; background-color: #b5a37a; color: white; border: none; cursor: pointer;">
+        ダークモード切替
+    </button>
+  </div>
+  <div class="container">
+    <header>
+      <h1>Reading ToDo</h1>
+    </header>
+
+    <div class="main-content">
+    <div class="left-column">
+        <section class="reading-progress" id="readingProgressSection">
+            <div class="reading-progress__header">
+                <h2 class="reading-progress__label">今読んでいる本の進捗</h2>
+                <button class="reading-progress__button">今日の進捗を記録する</button>
+            </div>
+            <div class="reading-progress__content fade-transition show">
+                <p class="reading-progress__percentage">0%</p>
+                <div class="progress-bar"><div class="progress-bar__fill"></div></div>
+                <div class="reading-progress__book-info">
+                    <span class="book-title">未設定</span>
+                    <span class="book-start-date">-</span>
+                     <span class="book-remaining">残り：-</span>
+                </div>
+            </div>    
+        </section>
+
+        <section class="book-summary">
+            <div class="summary-columns">
+              <div class="left-column">
+                <div class="section-header">
+                    <h2 class="section-title">
+                      <span class="section-title-text">最近追加した本</span>
+                    </h2>
+                    <div class="section-buttons">
+                      <button id="addBookBtn">本を追加</button>
+                    </div>
+                </div>
+                <div class="book-list-box" id="bookListContainer">
+                  <p class="empty-message">本が追加されていません</p>
+                </div>
+              </div>
+              <div class="right-column">
+                <h2 class="section-title">あなたの記録</h2>
+                <div class="record-box">
+                    <p id="completedBooksCount">読了した本：0冊</p>
+                    <p id="totalPagesRead">読んだページ数：0ページ</p>
+                    <canvas id="recordChart"></canvas>
+                </div>
+              </div>
+            </div>
+        </section>
+        </div>
+    </div>
+  </div>
+
+  <!-- モーダル（進捗） -->
+  <div class="progress-modal hidden" id="progressModal">
+    <div class="progress-modal__content">
+      <h2>今日読んだページ数</h2>
+      <input type="number" id="pagesReadInput" placeholder="例：120（何ページ目まで読んだか）">
+      <div class="modal-buttons">
+        <button class="modal-button cancel" onclick="closeModal()">キャンセル</button>
+        <button class="modal-button submit" onclick="submitProgress()">記録する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- モーダル（本の追加） -->
+  <div class="progress-modal hidden" id="addBookModal">
+    <div class="progress-modal__content">
+      <h2>本を追加</h2>
+      <input id="bookTitleInput" placeholder="タイトル">
+      <input id="bookPagesInput" type="number" placeholder="総ページ数">
+      <div class="modal-buttons">
+        <button class="modal-button cancel" onclick="closeAddBookModal()">キャンセル</button>
+        <button class="modal-button submit" onclick="addBook()">追加する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- モーダル（本一覧） -->
+    <div class="progress-modal hidden" id="allBooksModal">
+        <div class="progress-modal__content" style="max-height: 80vh; overflow-y: auto;">
+        <h2>本の一覧</h2>
+        <div id="allBooksList"></div>
+        <div class="modal-buttons">
+            <button class="modal-button cancel" onclick="closeAllBooksModal()">閉じる</button>
+        </div>
+        </div>
+    </div>
+  
+  <script>
+    let books = JSON.parse(localStorage.getItem("books")) || [];
+    let currentBook = null;
+    const readingSection = document.getElementById("readingProgressSection");
+    const percentageEl = readingSection.querySelector(".reading-progress__percentage");
+    const progressBar = readingSection.querySelector(".progress-bar__fill");
+    const titleEl = readingSection.querySelector(".book-title");
+    const startDateEl = readingSection.querySelector(".book-start-date");
+    const dueDateEl = readingSection.querySelector(".book-due-date");
+    const remainingEl = readingSection.querySelector(".book-remaining");
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const currentDate = new Date();
+        const formattedDate = currentDate.toLocaleDateString("ja-JP", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+        });
+        document.getElementById("current-date").textContent = formattedDate;
+    });
+
+
+
+    document.querySelector(".reading-progress__button").onclick = () => {
+      if (!currentBook) return alert("本が選ばれていません");
+      document.getElementById("progressModal").classList.remove("hidden");
+    };
+
+    function closeModal() {
+      document.getElementById("progressModal").classList.add("hidden");
+    }
+    
+    function submitProgress() {
+        const pages = parseInt(document.getElementById("pagesReadInput").value);
+        if (isNaN(pages) || pages <= 0) return alert("正しいページ数を入力してください");
+
+        currentBook.readPages = pages;
+        if (currentBook.readPages > currentBook.totalPages) {
+            currentBook.readPages = currentBook.totalPages;
+        }
+
+        // ✅ 読了したかチェック
+        if (currentBook.readPages === currentBook.totalPages) {
+            const count = Number(localStorage.getItem("completedBooksCount")) || 0;
+            localStorage.setItem("completedBooksCount", count + 1);
+
+            const total = Number(localStorage.getItem("totalPagesRead")) || 0;
+            localStorage.setItem("totalPagesRead", total + currentBook.totalPages);
+
+            if (!currentBook.finishedDate) {
+                currentBook.finishedDate = new Date().toISOString().split("T")[0];
+            }
+        }
+
+        if (!currentBook.finishedDate) {
+            currentBook.finishedDate = new Date().toISOString().split("T")[0];
+        }
+
+        updateProgressUI();
+        closeModal();
+        localStorage.setItem("books", JSON.stringify(books));
+        updateRecordSummary();  // ← これも最後に追加
+    }
+
+    // 本の追加
+    document.getElementById("addBookBtn").onclick = () => {
+      document.getElementById("addBookModal").classList.remove("hidden");
+    };
+
+    function closeAddBookModal() {
+      document.getElementById("addBookModal").classList.add("hidden");
+    }
+
+    function renderBookList() {
+        const container = document.getElementById("bookListContainer");
+        container.innerHTML = "";
+
+        if (books.length === 0) {
+            container.innerHTML = '<p class="empty-message">本が追加されていません</p>';
+            return;
+        }
+
+        books.forEach(book => {
+            const div = document.createElement("div");
+            div.className = "book-item";
+
+            // ✅ ステータスを判定（読了・読書中・未読）
+            let statusText = "未読";
+            if (book.readPages >= book.totalPages) {
+                statusText = "読了";
+            } else if (currentBook === book) {
+                statusText = "読書中";
+            }
+
+            div.innerHTML = `
+                <div>
+                    <div class="book-title">${book.title}</div>
+                </div>
+                <div class="book-status">${statusText}</div>
+                <div class="read-button">この本を読む</div>
+                <div class="delete-button">削除</div>
+            `;
+
+            // 「この本を読む」ボタン
+            div.querySelector(".read-button").onclick = () => {
+                currentBook = book;
+                localStorage.setItem("currentBookIndex", books.indexOf(book));
+
+                // ✅ 読書開始時に日付も追加したい場合（任意）
+                const today = new Date().toISOString().split("T")[0];
+                currentBook.date = today;
+
+                updateProgressUI();
+                renderBookList(); // ← 状態を更新するために再描画！
+            };
+
+            // 「削除」ボタン
+            div.querySelector(".delete-button").onclick = () => {
+                const index = books.indexOf(book);
+                const currentIndex = Number(localStorage.getItem("currentBookIndex"));
+                if (index === currentIndex) {
+                    localStorage.removeItem("currentBookIndex");
+                    currentBook = null;
+                }
+                books.splice(index, 1);
+                localStorage.setItem("books", JSON.stringify(books));
+                renderBookList();
+                updateProgressUI();
+            };
+
+            container.appendChild(div);
+        });
+    }
+
+    function addBook() {
+        const title = document.getElementById("bookTitleInput").value.trim();
+        const pages = parseInt(document.getElementById("bookPagesInput").value.trim());
+
+        if (!title) {
+            alert("タイトルを入力してください。");
+            return;
+        }
+        if (isNaN(pages) || pages <= 0) {
+            alert("総ページ数を正しい数値で入力してください。");
+            return;
+        }
+        // dueDate は任意入力なので、ここではバリデーションを必須にしない
+
+        const book = { title, totalPages: pages, readPages: 0 };
+        books.push(book);
+        localStorage.setItem("books", JSON.stringify(books));
+
+        closeAddBookModal();
+        renderBookList();
+
+        document.getElementById("bookTitleInput").value = "";
+        document.getElementById("bookPagesInput").value = "";
+        document.getElementById("bookDueDateInput").value = "";
+    }
+
+
+    function renderBook(book) {
+        const container = document.getElementById("bookListContainer");
+        const div = document.createElement("div");
+        div.className = "book-item";
+        div.innerHTML = `
+            <div>
+            <div class="book-title">${book.title}</div>
+            </div>
+            <div class="book-status">未読</div>
+            <div class="read-button">この本を読む</div>
+        `;
+        div.querySelector(".read-button").onclick = () => {
+            currentBook = book;
+
+            // ✅ 現在日付を設定（「この本を読む」ボタンが押されたとき）
+            const currentDate = new Date().toISOString().split("T")[0];
+            currentBook.date = currentDate;
+
+            // ✅ ローカルストレージに保存
+            localStorage.setItem("currentBookIndex", books.indexOf(book));
+            localStorage.setItem("books", JSON.stringify(books));
+
+            document.getElementById("readingProgressSection").classList.remove("hidden");
+            updateProgressUI();
+        };
+        container.appendChild(div);
+    }
+
+    function updateProgressUI() {
+        const progressContent = document.querySelector(".reading-progress__content");
+
+        // まず一度フェードアウト
+        progressContent.classList.remove("show");
+
+        // 少し待ってから内容を更新してフェードイン
+        setTimeout(() => {
+            if (!currentBook) {
+                percentageEl.textContent = "0%";
+                progressBar.style.width = "0%";
+                titleEl.textContent = "本が追加されていません";
+                startDateEl.textContent = "-";
+                dueDateEl.textContent = "目標：-";
+                remainingEl.textContent = "残り：-";
+            } else {
+                const percent = Math.floor((currentBook.readPages / currentBook.totalPages) * 100);
+                percentageEl.textContent = `${percent}%`;
+                progressBar.style.width = `${percent}%`;
+                titleEl.textContent = currentBook.title;
+                startDateEl.textContent = currentBook.date;
+                remainingEl.textContent = percent === 100 ? "読了！" : `残り：${currentBook.totalPages - currentBook.readPages}p`;
+            }
+
+            progressContent.classList.add("show");
+        }, 100); // 100ms後に内容更新＋フェードイン
+    }
+
+    renderBookList();
+
+    function updateRecordSummary() {
+        const count = Number(localStorage.getItem("completedBooksCount")) || 0;
+        const total = Number(localStorage.getItem("totalPagesRead")) || 0;
+        document.getElementById("completedBooksCount").textContent = `読了した本：${count}冊`;
+        document.getElementById("totalPagesRead").textContent = `読んだページ数：${total}ページ`;
+
+        const ctx = document.getElementById("recordChart").getContext("2d");
+
+        if (window.recordChartInstance) {
+        window.recordChartInstance.destroy(); // すでに描画済みなら破棄
+        }
+        
+
+        window.recordChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: ["読了した本", "読んだページ数"],
+            datasets: [ {
+                label: "読了した本",
+                data: [count, 0], // ページ数の位置に0を入れる
+                backgroundColor: "#b5a37a",
+                yAxisID: 'yLeft'  // 左Y軸
+            },
+                
+            {
+                label: "読んだページ数",
+                data: [0, total], // 冊数の位置に0を入れる
+                backgroundColor: "#e5cfa5",
+                yAxisID: 'yRight' // 右Y軸   
+            } ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'center',
+                    labels: {
+                        boxWidth: 20,
+                        padding: 10,
+                        color: isDarkMode() ? 'white' : '#434343'  // ← ここ！
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: isDarkMode() ? 'white' : '#434343',
+                        maxRotation: 0,
+                        minRotation: 0,
+                        autoSkip: false
+                    },
+                    grid: {
+                        color: isDarkMode() ? '#777' : '#ccc'  // 👈 明るくする線の色
+                    }
+                },
+                yLeft: {
+                    beginAtZero: true,
+                    position: "left",
+                    title: {
+                        display: true,
+                        text: "冊数",
+                        color: isDarkMode() ? 'white' : '#434343'
+                    },
+                    ticks: {
+                        stepSize: 1,
+                        color: isDarkMode() ? 'white' : '#434343'
+                    },
+                    grid: {
+                        color: isDarkMode() ? '#777' : '#ccc'  // 👈 こちらも
+                    }
+                },
+                yRight: {
+                    beginAtZero: true,
+                    position: "right",
+                    title: {
+                        display: true,
+                        text: "ページ数",
+                        color: isDarkMode() ? 'white' : '#434343'
+                    },
+                    ticks: {
+                        color: isDarkMode() ? 'white' : '#434343'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }});
+    }
+
+    function showAllBooksModal() {
+        const modal = document.createElement("div");
+        modal.className = "progress-modal";
+        modal.id = "allBooksModal";
+        modal.style.zIndex = "9999";
+
+        modal.innerHTML = `
+            <div class="progress-modal__content" style="max-height: 80vh; overflow-y: auto;">
+            <h2 style="margin-bottom: 16px;">追加された本の一覧</h2>
+            <div class="book-list" id="allBooksList"></div>  <!-- ← 親要素に book-list を追加 -->
+            <div class="modal-buttons" style="margin-top: 24px; text-align: center;">
+                <button class="modal-button cancel" onclick="closeAllBooksModal()">閉じる</button>
+            </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const list = modal.querySelector("#allBooksList");
+
+        if (books.length === 0) {
+            list.innerHTML = '<p class="empty-message">本が追加されていません</p>';
+        } else {
+            books.forEach(book => {
+                const div = document.createElement("div");
+                div.className = "book-item";
+
+                let statusText = "未読";
+                if (book.readPages >= book.totalPages) {
+                    statusText = "読了";
+                } else if (currentBook === book) {
+                    statusText = "読書中";
+                }
+
+                div.innerHTML = `
+                    <div><div class="book-title">${book.title}</div></div>
+                    <div class="book-status">${statusText}</div>
+                    <div class="read-button">この本を読む</div>
+                    <div class="delete-button">削除</div>
+                `;
+
+                div.querySelector(".read-button").onclick = () => {
+                    currentBook = book;
+                    localStorage.setItem("currentBookIndex", books.indexOf(book));
+                    currentBook.date = new Date().toISOString().split("T")[0];
+                    updateProgressUI();
+                    renderBookList();
+                    closeAllBooksModal();
+                };
+
+                div.querySelector(".delete-button").onclick = () => {
+                    const index = books.indexOf(book);
+                    if (index === books.indexOf(currentBook)) {
+                        currentBook = null;
+                        localStorage.removeItem("currentBookIndex");
+                    }
+                    books.splice(index, 1);
+                    localStorage.setItem("books", JSON.stringify(books));
+                    renderBookList();
+                    updateProgressUI();
+                    closeAllBooksModal();
+                    showAllBooksModal(); // 再描画
+                };
+
+                list.appendChild(div);
+            });
+        }
+    }
+
+    function isDarkMode() {
+        return document.documentElement.classList.contains("dark-mode");
+    }
+
+    // ページ読み込み時に保存された本と進捗情報を復元
+    window.onload = () => {
+        const savedBooks = localStorage.getItem("books");
+        if (savedBooks) {
+            books = JSON.parse(savedBooks);
+            renderBookList();
+        }
+
+        const savedIndex = localStorage.getItem("currentBookIndex");
+        if (savedIndex !== null && books[Number(savedIndex)]) {
+            currentBook = books[Number(savedIndex)];
+            readingSection.classList.remove("hidden");
+            updateProgressUI();
+        }
+
+        updateRecordSummary();
+    };
+
+    function toggleDarkMode() {
+        const isDark = document.documentElement.classList.toggle("dark-mode");
+
+        // localStorageにテーマ状態を保存！
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+
+        // ボタンのラベルも更新
+        const button = document.querySelector(".toggle-theme-button");
+        if (button) {
+            button.textContent = isDark ? "ライトモード切替" : "ダークモード切替";
+        }
+
+        // 🎯 グラフを次の描画フレームで再描画（確実にテーマが反映された状態になる）
+        requestAnimationFrame(() => {
+            updateRecordSummary();
+        });
+    }
+
+    document.getElementById("viewAllBtn").onclick = () => {
+        const container = document.getElementById("bookListContainer");
+        container.scrollIntoView({ behavior: "smooth" });
+    };
+
+    window.addEventListener("DOMContentLoaded", () => {
+        const savedTheme = localStorage.getItem("theme");
+        const button = document.querySelector(".toggle-theme-button");
+        if (button) {
+            button.textContent = savedTheme === "dark" ? "ライトモード切替" : "ダークモード切替";
+        }
+    });
+
+
+    function showAllBooksModal() {
+        const modal = document.createElement("div");
+        modal.className = "progress-modal";
+        modal.style.zIndex = "9999";
+        modal.innerHTML = `
+            <div class="progress-modal__content" style="max-height: 80vh; overflow-y: auto;">
+            <h2>追加された本の一覧</h2>
+            <ul style="text-align: left; padding-left: 1.2em;">
+                ${books.map(book => `<li>${book.title}（${book.readPages}/${book.totalPages}ページ）</li>`).join("")}
+            </ul>
+            <div class="modal-buttons" style="margin-top: 20px;">
+                <button class="modal-button cancel" onclick="closeAllBooksModal()">閉じる</button>
+            </div>
+            </div>
+        `;
+        modal.id = "allBooksModal";
+        document.body.appendChild(modal);
+        }
+
+        function closeAllBooksModal() {
+        const modal = document.getElementById("allBooksModal");
+        if (modal) modal.remove();
+    }
+
+
+  </script>
+</body>
+</html>
